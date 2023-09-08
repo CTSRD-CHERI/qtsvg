@@ -74,6 +74,7 @@ private slots:
     void fillRule();
     void opacity();
     void paths();
+    void paths2();
     void displayMode();
     void strokeInherit();
     void testFillInheritance();
@@ -85,6 +86,8 @@ private slots:
     void oss_fuzz_23731();
     void oss_fuzz_24131();
     void oss_fuzz_24738();
+    void illegalAnimateTransform_data();
+    void illegalAnimateTransform();
 
 #ifndef QT_NO_COMPRESS
     void testGzLoading();
@@ -1047,6 +1050,19 @@ void tst_QSvgRenderer::paths()
     }
 }
 
+void tst_QSvgRenderer::paths2()
+{
+    const char *svg =
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\">"
+            "<path d=\"M 3 8 A 5 5 0 1013 8\" id=\"path1\"/>"
+        "</svg>";
+
+    QByteArray data(svg);
+    QSvgRenderer renderer(data);
+    QVERIFY(renderer.isValid());
+    QCOMPARE(renderer.boundsOnElement(QLatin1String("path1")).toRect(), QRect(3, 8, 10, 5));
+}
+
 void tst_QSvgRenderer::displayMode()
 {
     static const char *svgs[] = {
@@ -1630,6 +1646,23 @@ void tst_QSvgRenderer::oss_fuzz_24738()
     // when configured with "-sanitize undefined", this resulted in:
     // "runtime error: division by zero"
     QSvgRenderer().load(QByteArray("<svg><path d=\"a 2 1e-212.....\">"));
+}
+
+void tst_QSvgRenderer::illegalAnimateTransform_data()
+{
+    QTest::addColumn<QByteArray>("svg");
+
+    QTest::newRow("case1") << QByteArray("<svg><animateTransform type=\"rotate\" begin=\"1\" dur=\"2\" values=\"8,0,5,0\">");
+    QTest::newRow("case2") << QByteArray("<svg><animateTransform type=\"rotate\" begin=\"1\" dur=\"2\" values=\"1,2\">");
+    QTest::newRow("case3") << QByteArray("<svg><animateTransform type=\"rotate\" begin=\"1\" dur=\"2\" from=\".. 5 2\" to=\"f\">");
+    QTest::newRow("case4") << QByteArray("<svg><animateTransform type=\"scale\" begin=\"1\" dur=\"2\" by=\"--,..\">");
+}
+
+void tst_QSvgRenderer::illegalAnimateTransform()
+{
+    QFETCH(QByteArray, svg);
+    QSvgRenderer renderer;
+    QVERIFY(!renderer.load(svg)); // also shouldn't assert
 }
 
 QTEST_MAIN(tst_QSvgRenderer)
